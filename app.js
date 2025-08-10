@@ -1,0 +1,58 @@
+require('express-async-errors');
+const { connectDB } = require('./db/index');
+const express = require('express');
+require('dotenv').config();
+const morgan = require('morgan');
+const cors = require('cors');
+
+const forexJob = require('./jobs/forex.job');
+const commoditiesJob = require('./jobs/commodities.job');
+const cryptoJob = require('./jobs/crypto.job');
+const indiceJob = require('./jobs/indice.job');
+
+const companyRoutes = require('./routes/company.routes');
+const cryptoRoutes = require('./routes/crypto.routes');
+const indexRoutes = require('./routes/index.routes');
+const forexRoutes = require('./routes/forex.routes');
+const forexInterbankRoutes = require('./routes/forexInterbank.routes');
+
+const app = express();
+
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3002',
+];
+
+const corsOptions = {
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.use(express.json());
+app.use(morgan('dev'));
+
+connectDB();
+
+// forexJob.start();
+indiceJob.start();
+
+app.use('/api/company', companyRoutes);
+app.use('/api/crypto', cryptoRoutes);
+app.use('/api/index', indexRoutes);
+app.use('/api/forex', forexRoutes);
+app.use('/api/forex-interbank-rates', forexInterbankRoutes);
+
+app.use((err, req, res, next) => {
+  res.status(500).json({ error: err.message });
+});
+
+const PORT = process.env.PORT;
+
+app.listen(PORT, () => {
+  console.clear();
+  console.log('port is listening on ' + PORT);
+});
