@@ -218,7 +218,7 @@ const cryptoUpdateJob = cron.schedule(
     }
   },
   {
-    scheduled: false,
+    scheduled: true,
     timezone: 'UTC',
   }
 );

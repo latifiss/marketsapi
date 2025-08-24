@@ -1,4 +1,43 @@
 const Forex = require('../models/forex.model');
+const { getRedisClient } = require('../lib/redis');
+
+const setCache = async (key, data, expirationInSeconds = 3600) => {
+  try {
+    const client = await getRedisClient();
+    if (client && typeof client.set === 'function') {
+      await client.set(key, JSON.stringify(data), { EX: expirationInSeconds });
+    }
+  } catch (error) {
+    console.error('Error setting cache:', error.message);
+  }
+};
+
+const getCache = async (key) => {
+  try {
+    const client = await getRedisClient();
+    if (client && typeof client.get === 'function') {
+      const data = await client.get(key);
+      return data ? JSON.parse(data) : null;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting cache:', error.message);
+    return null;
+  }
+};
+
+const deleteCacheByPattern = async (pattern) => {
+  try {
+    const client = await getRedisClient();
+    if (client && typeof client.scanIterator === 'function') {
+      for await (const key of client.scanIterator({ MATCH: pattern })) {
+        await client.del(key);
+      }
+    }
+  } catch (error) {
+    console.error('Error deleting cache by pattern:', error.message);
+  }
+};
 
 const createForex = async (req, res) => {
   try {
@@ -31,6 +70,7 @@ const createForex = async (req, res) => {
     });
 
     const savedForex = await newForex.save();
+    await deleteCacheByPattern('forex:*');
     res.status(201).json(savedForex);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -39,7 +79,11 @@ const createForex = async (req, res) => {
 
 const getAllForex = async (req, res) => {
   try {
+    const cacheKey = 'forex:all';
+    const cached = await getCache(cacheKey);
+    if (cached) return res.status(200).json(cached);
     const forexPairs = await Forex.find();
+    await setCache(cacheKey, forexPairs);
     res.json(forexPairs);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -48,9 +92,13 @@ const getAllForex = async (req, res) => {
 
 const getForex = async (req, res) => {
   try {
+    const cacheKey = `forex:${req.params.code}`;
+    const cached = await getCache(cacheKey);
+    if (cached) return res.status(200).json(cached);
     const forex = await Forex.findOne({ code: req.params.code });
     if (!forex)
       return res.status(404).json({ message: 'Forex pair not found' });
+    await setCache(cacheKey, forex);
     res.json(forex);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -95,6 +143,8 @@ const updateForex = async (req, res) => {
       { new: true }
     );
 
+    await deleteCacheByPattern('forex:*');
+    await deleteCacheByPattern(`forex:${code}`);
     res.json(updatedForex);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -109,6 +159,8 @@ const deleteForex = async (req, res) => {
     if (!deletedForex) {
       return res.status(404).json({ message: 'Forex pair not found' });
     }
+    await deleteCacheByPattern('forex:*');
+    await deleteCacheByPattern(`forex:${req.params.code}`);
     res.json({ message: 'Forex pair deleted successfully' });
   } catch (error) {
     res.status(400).json({ message: error.message });

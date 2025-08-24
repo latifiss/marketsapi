@@ -9,12 +9,15 @@ const forexJob = require('./jobs/forex.job');
 const commoditiesJob = require('./jobs/commodities.job');
 const cryptoJob = require('./jobs/crypto.job');
 const indiceJob = require('./jobs/indice.job');
+const goldbodJob = require('./jobs/goldbod.job');
 
 const companyRoutes = require('./routes/company.routes');
 const cryptoRoutes = require('./routes/crypto.routes');
 const indexRoutes = require('./routes/index.routes');
 const forexRoutes = require('./routes/forex.routes');
 const forexInterbankRoutes = require('./routes/forexInterbank.routes');
+const commodityRoutes = require('./routes/commodity.routes');
+const goldbodRoutes = require('./routes/goldbod.routes');
 
 const app = express();
 
@@ -22,6 +25,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:3002',
+  'https://www.theghanaianweb.com',
 ];
 
 const corsOptions = {
@@ -37,14 +41,19 @@ app.use(morgan('dev'));
 
 connectDB();
 
-// forexJob.start();
+forexJob.start();
+commoditiesJob.start();
+cryptoJob.start();
 indiceJob.start();
+goldbodJob.start();
 
 app.use('/api/company', companyRoutes);
 app.use('/api/crypto', cryptoRoutes);
 app.use('/api/index', indexRoutes);
 app.use('/api/forex', forexRoutes);
 app.use('/api/forex-interbank-rates', forexInterbankRoutes);
+app.use('/api/commodity', commodityRoutes);
+app.use('/api/goldbod', goldbodRoutes);
 
 app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message });

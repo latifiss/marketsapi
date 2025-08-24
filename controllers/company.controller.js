@@ -1,9 +1,48 @@
 const Company = require('../models/company.model');
+const { getRedisClient } = require('../lib/redis');
 
-// Create a new company
+const setCache = async (key, data, expirationInSeconds = 3600) => {
+  try {
+    const client = await getRedisClient();
+    if (client && typeof client.set === 'function') {
+      await client.set(key, JSON.stringify(data), { EX: expirationInSeconds });
+    }
+  } catch (error) {
+    console.error('Error setting cache:', error.message);
+  }
+};
+
+const getCache = async (key) => {
+  try {
+    const client = await getRedisClient();
+    if (client && typeof client.get === 'function') {
+      const data = await client.get(key);
+      return data ? JSON.parse(data) : null;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting cache:', error.message);
+    return null;
+  }
+};
+
+const deleteCacheByPattern = async (pattern) => {
+  try {
+    const client = await getRedisClient();
+    if (client && typeof client.scanIterator === 'function') {
+      for await (const key of client.scanIterator({ MATCH: pattern })) {
+        await client.del(key);
+      }
+    }
+  } catch (error) {
+    console.error('Error deleting cache by pattern:', error.message);
+  }
+};
+
 exports.createCompany = async (req, res) => {
   try {
     const newCompany = await Company.create(req.body);
+    await deleteCacheByPattern('companies:*');
     res.status(201).json({
       status: 'success',
       data: {
@@ -18,21 +57,20 @@ exports.createCompany = async (req, res) => {
   }
 };
 
-// Update a company
 exports.updateCompany = async (req, res) => {
   try {
     const company = await Company.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
-
     if (!company) {
       return res.status(404).json({
         status: 'fail',
         message: 'Company not found',
       });
     }
-
+    await deleteCacheByPattern('companies:*');
+    await deleteCacheByPattern(`company:${req.params.id}`);
     res.status(200).json({
       status: 'success',
       data: {
@@ -47,9 +85,14 @@ exports.updateCompany = async (req, res) => {
   }
 };
 
-// Get a single company by ID
 exports.getCompany = async (req, res) => {
   try {
+    const cacheKey = `company:${req.params.id}`;
+    const cached = await getCache(cacheKey);
+    if (cached)
+      return res
+        .status(200)
+        .json({ status: 'success', data: { company: cached } });
     const company = await Company.findById(req.params.id);
     if (!company) {
       return res.status(404).json({
@@ -57,6 +100,7 @@ exports.getCompany = async (req, res) => {
         message: 'Company not found',
       });
     }
+    await setCache(cacheKey, company);
     res.status(200).json({
       status: 'success',
       data: {
@@ -71,17 +115,19 @@ exports.getCompany = async (req, res) => {
   }
 };
 
-// Get all companies
 exports.getAllCompanies = async (req, res) => {
   try {
+    const cacheKey = 'companies:all';
+    const cached = await getCache(cacheKey);
+    if (cached) return res.status(200).json(cached);
     const companies = await Company.find();
-    res.status(200).json({
+    const response = {
       status: 'success',
       results: companies.length,
-      data: {
-        companies,
-      },
-    });
+      data: { companies },
+    };
+    await setCache(cacheKey, response);
+    res.status(200).json(response);
   } catch (err) {
     res.status(400).json({
       status: 'fail',
@@ -90,19 +136,21 @@ exports.getAllCompanies = async (req, res) => {
   }
 };
 
-// Get companies from a specific country
 exports.getCompaniesFromCountry = async (req, res) => {
   try {
+    const cacheKey = `companies:country:${req.params.country}`;
+    const cached = await getCache(cacheKey);
+    if (cached) return res.status(200).json(cached);
     const companies = await Company.find({
       'about.country': req.params.country,
     });
-    res.status(200).json({
+    const response = {
       status: 'success',
       results: companies.length,
-      data: {
-        companies,
-      },
-    });
+      data: { companies },
+    };
+    await setCache(cacheKey, response);
+    res.status(200).json(response);
   } catch (err) {
     res.status(400).json({
       status: 'fail',
@@ -111,19 +159,21 @@ exports.getCompaniesFromCountry = async (req, res) => {
   }
 };
 
-// Get companies from a specific exchange
 exports.getCompaniesFromExchange = async (req, res) => {
   try {
+    const cacheKey = `companies:exchange:${req.params.exchangeName}`;
+    const cached = await getCache(cacheKey);
+    if (cached) return res.status(200).json(cached);
     const companies = await Company.find({
       'shares.exchange_listed_name': req.params.exchangeName,
     });
-    res.status(200).json({
+    const response = {
       status: 'success',
       results: companies.length,
-      data: {
-        companies,
-      },
-    });
+      data: { companies },
+    };
+    await setCache(cacheKey, response);
+    res.status(200).json(response);
   } catch (err) {
     res.status(400).json({
       status: 'fail',
@@ -132,19 +182,21 @@ exports.getCompaniesFromExchange = async (req, res) => {
   }
 };
 
-// Get companies from a specific industry
 exports.getCompaniesFromIndustry = async (req, res) => {
   try {
+    const cacheKey = `companies:industry:${req.params.industry}`;
+    const cached = await getCache(cacheKey);
+    if (cached) return res.status(200).json(cached);
     const companies = await Company.find({
       'about.industry': req.params.industry,
     });
-    res.status(200).json({
+    const response = {
       status: 'success',
       results: companies.length,
-      data: {
-        companies,
-      },
-    });
+      data: { companies },
+    };
+    await setCache(cacheKey, response);
+    res.status(200).json(response);
   } catch (err) {
     res.status(400).json({
       status: 'fail',
@@ -153,20 +205,22 @@ exports.getCompaniesFromIndustry = async (req, res) => {
   }
 };
 
-// Get companies from a specific industry in a particular country
 exports.getCompaniesFromIndustryInCountry = async (req, res) => {
   try {
+    const cacheKey = `companies:industry:${req.params.industry}:country:${req.params.country}`;
+    const cached = await getCache(cacheKey);
+    if (cached) return res.status(200).json(cached);
     const companies = await Company.find({
       'about.industry': req.params.industry,
       'about.country': req.params.country,
     });
-    res.status(200).json({
+    const response = {
       status: 'success',
       results: companies.length,
-      data: {
-        companies,
-      },
-    });
+      data: { companies },
+    };
+    await setCache(cacheKey, response);
+    res.status(200).json(response);
   } catch (err) {
     res.status(400).json({
       status: 'fail',
@@ -175,9 +229,11 @@ exports.getCompaniesFromIndustryInCountry = async (req, res) => {
   }
 };
 
-// Get all companies grouped by industry
 exports.getGroupCompaniesByIndustry = async (req, res) => {
   try {
+    const cacheKey = 'companies:groupByIndustry';
+    const cached = await getCache(cacheKey);
+    if (cached) return res.status(200).json(cached);
     const companies = await Company.aggregate([
       {
         $group: {
@@ -186,18 +242,15 @@ exports.getGroupCompaniesByIndustry = async (req, res) => {
           count: { $sum: 1 },
         },
       },
-      {
-        $sort: { count: -1 },
-      },
+      { $sort: { count: -1 } },
     ]);
-
-    res.status(200).json({
+    const response = {
       status: 'success',
       results: companies.length,
-      data: {
-        companies,
-      },
-    });
+      data: { companies },
+    };
+    await setCache(cacheKey, response);
+    res.status(200).json(response);
   } catch (err) {
     res.status(400).json({
       status: 'fail',
@@ -206,21 +259,22 @@ exports.getGroupCompaniesByIndustry = async (req, res) => {
   }
 };
 
-// Get companies from a specific industry in a particular exchange
 exports.getCompaniesFromIndustryInExchange = async (req, res) => {
   try {
+    const cacheKey = `companies:industry:${req.params.industry}:exchange:${req.params.exchangeName}`;
+    const cached = await getCache(cacheKey);
+    if (cached) return res.status(200).json(cached);
     const companies = await Company.find({
       'about.industry': req.params.industry,
       'shares.exchange_listed_name': req.params.exchangeName,
     });
-
-    res.status(200).json({
+    const response = {
       status: 'success',
       results: companies.length,
-      data: {
-        companies,
-      },
-    });
+      data: { companies },
+    };
+    await setCache(cacheKey, response);
+    res.status(200).json(response);
   } catch (err) {
     res.status(400).json({
       status: 'fail',
@@ -231,13 +285,12 @@ exports.getCompaniesFromIndustryInExchange = async (req, res) => {
 
 exports.getIndustryPerformanceInExchange = async (req, res) => {
   try {
+    const cacheKey = `companies:performance:exchange:${req.params.exchangeName}`;
+    const cached = await getCache(cacheKey);
+    if (cached) return res.status(200).json(cached);
     const exchangeName = req.params.exchangeName;
-
-    // Aggregate to calculate weighted performance
     const industryPerformance = await Company.aggregate([
-      {
-        $match: { 'shares.exchange_listed_name': exchangeName },
-      },
+      { $match: { 'shares.exchange_listed_name': exchangeName } },
       {
         $group: {
           _id: '$about.industry',
@@ -256,24 +309,18 @@ exports.getIndustryPerformanceInExchange = async (req, res) => {
       {
         $project: {
           industry: '$_id',
-          performance: {
-            $divide: ['$weightedPerformance', '$totalMarketCap'],
-          },
+          performance: { $divide: ['$weightedPerformance', '$totalMarketCap'] },
           companyCount: { $size: '$companies' },
         },
       },
-      {
-        $sort: { performance: -1 }, // Sort by best-performing first
-      },
+      { $sort: { performance: -1 } },
     ]);
-
-    res.status(200).json({
+    const response = {
       status: 'success',
-      data: {
-        exchange: exchangeName,
-        industryPerformance,
-      },
-    });
+      data: { exchange: exchangeName, industryPerformance },
+    };
+    await setCache(cacheKey, response);
+    res.status(200).json(response);
   } catch (err) {
     res.status(400).json({
       status: 'fail',
@@ -282,17 +329,14 @@ exports.getIndustryPerformanceInExchange = async (req, res) => {
   }
 };
 
-// Get all companies grouped by industry in a specific exchange
 exports.getGroupCompaniesByIndustryInExchange = async (req, res) => {
   try {
+    const cacheKey = `companies:groupByIndustry:exchange:${req.params.exchangeName}`;
+    const cached = await getCache(cacheKey);
+    if (cached) return res.status(200).json(cached);
     const exchangeName = req.params.exchangeName;
-
     const companiesByIndustry = await Company.aggregate([
-      {
-        $match: {
-          'shares.exchange_listed_name': exchangeName,
-        },
-      },
+      { $match: { 'shares.exchange_listed_name': exchangeName } },
       {
         $group: {
           _id: '$about.industry',
@@ -310,11 +354,8 @@ exports.getGroupCompaniesByIndustryInExchange = async (req, res) => {
           _id: 0,
         },
       },
-      {
-        $sort: { totalMarketCap: -1 },
-      },
+      { $sort: { totalMarketCap: -1 } },
     ]);
-
     if (companiesByIndustry.length === 0) {
       return res.status(404).json({
         status: 'fail',
@@ -322,15 +363,13 @@ exports.getGroupCompaniesByIndustryInExchange = async (req, res) => {
           'No companies found for this exchange or industries not defined',
       });
     }
-
-    res.status(200).json({
+    const response = {
       status: 'success',
       results: companiesByIndustry.length,
-      data: {
-        exchange: exchangeName,
-        industries: companiesByIndustry,
-      },
-    });
+      data: { exchange: exchangeName, industries: companiesByIndustry },
+    };
+    await setCache(cacheKey, response);
+    res.status(200).json(response);
   } catch (err) {
     res.status(400).json({
       status: 'fail',

@@ -6,6 +6,19 @@ const commoditySources = require('../scripts/commoditiesIndex');
 const checkConnection = () => mongoose.connection.readyState === 1;
 const MAX_WAIT_MS = 5 * 60 * 1000;
 
+const getETHour = () => {
+  const now = new Date();
+  return new Date(
+    now.toLocaleString('en-US', { timeZone: 'America/New_York' })
+  ).getHours();
+};
+const getETDay = () => {
+  const now = new Date();
+  return new Date(
+    now.toLocaleString('en-US', { timeZone: 'America/New_York' })
+  ).getDay();
+};
+
 const withTimeout = (promise, timeoutMs, label) => {
   return Promise.race([
     promise,
@@ -25,7 +38,7 @@ const processCommodityUpdate = async (data) => {
     const existing = await Commodity.findOne({ code: data.code }).lean();
 
     if (!existing) {
-      const result = await Commodity.create({
+      await Commodity.create({
         code: data.code,
         name: data.name,
         unit: data.unit,
@@ -42,7 +55,6 @@ const processCommodityUpdate = async (data) => {
       };
     }
 
-    // Validate existing price
     const existingPrice = Number(existing.currentPrice);
     if (isNaN(existingPrice)) {
       throw new Error(`Existing price is invalid: ${existing.currentPrice}`);
@@ -58,12 +70,7 @@ const processCommodityUpdate = async (data) => {
         },
         $push: {
           price_history: {
-            $each: [
-              {
-                date: new Date(),
-                price: existingPrice,
-              },
-            ],
+            $each: [{ date: new Date(), price: existingPrice }],
             $position: 0,
           },
         },
@@ -83,9 +90,17 @@ const processCommodityUpdate = async (data) => {
 };
 
 const commodityUpdateJob = cron.schedule(
-  '*/2 * * * *',
+  '0 * * * *',
   async () => {
     const runId = Date.now();
+    const etHour = getETHour();
+    const etDay = getETDay();
+
+    if (etDay === 6 || etHour === 17) {
+      console.log(`Skipping commodity update (market closed). RunId: ${runId}`);
+      return;
+    }
+
     console.log(
       `\n--- COMMODITY CRON JOB STARTED (${runId}) ---`,
       new Date().toISOString()
@@ -147,8 +162,9 @@ const commodityUpdateJob = cron.schedule(
         `\nCommodity update completed in ${(
           (Date.now() - startTime) /
           1000
-        ).toFixed(2)}s. ` +
-          `Success: ${success.length}, Failed: ${failed.length + errors.length}`
+        ).toFixed(2)}s. Success: ${success.length}, Failed: ${
+          failed.length + errors.length
+        }`
       );
     } catch (error) {
       console.error('Commodity update failed:', error.message);
@@ -157,7 +173,7 @@ const commodityUpdateJob = cron.schedule(
     }
   },
   {
-    scheduled: false,
+    scheduled: true,
     timezone: 'UTC',
   }
 );

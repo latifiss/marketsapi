@@ -35,27 +35,24 @@ async function scrapeGoldPrice() {
       }
     });
 
-    const result = {
+    // Ensure we always return an object with the expected structure
+    return {
       code: 'goldbod',
       commodity: 'gold',
-      price_per_gh_pound: priceText || null,
-      discount_rate: discountText || null,
+      price_per_gh_pound: priceText || 'GHS 0.00', // Default value if not found
+      discount_rate: discountText || '0%', // Default value if not found
     };
-
-    console.log(JSON.stringify(result, null, 2));
   } catch (error) {
-    console.error(
-      JSON.stringify(
-        {
-          code: 'goldbod',
-          commodity: 'gold',
-          error: error.message,
-        },
-        null,
-        2
-      )
-    );
+    // Return error information in the expected format
+    return {
+      code: 'goldbod',
+      error: error.message,
+      commodity: 'gold',
+      price_per_gh_pound: null,
+      discount_rate: null,
+    };
   }
 }
 
-scrapeGoldPrice();
+// Make sure to export the function
+module.exports = scrapeGoldPrice;

@@ -120,7 +120,7 @@ const aboutSchema = new Schema(
     slug: { type: String, required: true },
     year_founded: { type: String, required: true },
     industry: { type: String, required: true },
-    isin_symbol: { type: String, required: true },
+    isin_symbol: { type: String },
     website: { type: String, required: true },
     headquaters: { type: String, required: true },
     exchange_symbol: { type: String, required: true },
@@ -130,7 +130,7 @@ const aboutSchema = new Schema(
     number_of_employees: { type: String },
     country: { type: String, required: true },
     currency: { type: String, required: true },
-    chief_executive_officer: { type: String, required: true },
+    chief_executive_officer: { type: String },
   },
   { _id: false }
 );
@@ -216,7 +216,7 @@ const CompanySchema = new Schema(
     events: eventsSchema,
     returns: returnsSchema,
     shares: listingAndSharesSchema,
-    annual_revenue_histroy: [annualRevenueHistorySchema],
+    annual_revenue_history: [annualRevenueHistorySchema],
     quarterly_revenue_history: [quarterlyRevenueHistorySchema],
     annual_net_income_history: [annualNetIcomeHistorySchema],
     quarterly_net_income_history: [quarterlyNetIcomeHistorySchema],

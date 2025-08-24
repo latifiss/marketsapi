@@ -21,7 +21,7 @@ const processForexUpdate = async (data) => {
     const existing = await Forex.findOne({ code: data.code }).lean();
 
     if (!existing) {
-      const result = await Forex.create({
+      await Forex.create({
         ...data,
         price_history: [],
         last_updated: new Date(),
@@ -71,7 +71,7 @@ const processForexUpdate = async (data) => {
 };
 
 const forexUpdateJob = cron.schedule(
-  '*/2 * * * *',
+  '0 * * * *',
   async () => {
     const runId = Date.now();
     console.log(
@@ -81,6 +81,13 @@ const forexUpdateJob = cron.schedule(
 
     if (!checkConnection()) {
       console.error('MongoDB not connected, skipping forex update');
+      return;
+    }
+
+    const now = new Date();
+    const day = now.getUTCDay();
+    if (day === 0 || day === 6) {
+      console.log('⏸️ Forex market closed (weekend), skipping update.');
       return;
     }
 
@@ -146,7 +153,7 @@ const forexUpdateJob = cron.schedule(
     }
   },
   {
-    scheduled: false,
+    scheduled: true,
     timezone: 'UTC',
   }
 );

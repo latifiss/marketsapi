@@ -23,25 +23,11 @@ const withRetry = async (
   try {
     return await fn();
   } catch (error) {
-    const status = error.response?.status;
-    if (status === 429) {
-      console.warn('⚠️  Received 429 Too Many Requests from API');
-    }
     if (retries <= 0) throw error;
-
-    let retryAfter = error.response?.headers?.['retry-after']
+    const retryAfter = error.response?.headers?.['retry-after']
       ? parseInt(error.response.headers['retry-after']) * 1000
       : delayMs;
-
-    const jitter = Math.floor(Math.random() * 1000);
-    retryAfter += jitter;
-
-    console.warn(
-      `⏳ Retrying in ${(retryAfter / 1000).toFixed(
-        2
-      )}s... (${retries} attempts left)`
-    );
-    await delay(retryAfter);
+    await delay(retryAfter + Math.floor(Math.random() * 1000));
     return withRetry(fn, retries - 1, delayMs * 2);
   }
 };
@@ -64,10 +50,7 @@ const cachedRequest = async (url, params = {}) => {
     axios.get(url, {
       params,
       timeout: 5000,
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': USER_AGENT,
-      },
+      headers: { Accept: 'application/json', 'User-Agent': USER_AGENT },
     })
   );
 
@@ -86,7 +69,6 @@ const processIndexUpdate = async (data) => {
         price_history: [],
         last_updated: new Date(),
       });
-
       return {
         code: data.code,
         action: 'created',
@@ -107,12 +89,7 @@ const processIndexUpdate = async (data) => {
         },
         $push: {
           price_history: {
-            $each: [
-              {
-                date: new Date(),
-                price: existing.currentPrice,
-              },
-            ],
+            $each: [{ date: new Date(), price: existing.currentPrice }],
             $position: 0,
             $slice: 1000,
           },
@@ -132,8 +109,9 @@ const processIndexUpdate = async (data) => {
   }
 };
 
+// Run every hour
 const indexUpdateJob = cron.schedule(
-  '*/15 * * * *',
+  '0 * * * *',
   async () => {
     const runId = Date.now();
     console.log(
@@ -145,7 +123,12 @@ const indexUpdateJob = cron.schedule(
       return;
     }
 
-    const startTime = Date.now();
+    const now = new Date();
+    const ghanaTime = new Date(
+      now.toLocaleString('en-US', { timeZone: 'Africa/Accra' })
+    );
+    const hour = ghanaTime.getHours();
+    const day = ghanaTime.getDay();
 
     try {
       const scrapers = Array.isArray(indexSources)
@@ -153,64 +136,51 @@ const indexUpdateJob = cron.schedule(
         : Object.values(indexSources);
 
       const scrapedData = await Promise.all(
-        scrapers.filter(Boolean).map((scraper) =>
-          withTimeout(
-            scraper(),
-            MAX_WAIT_MS,
-            scraper.name || 'anonymous'
-          ).catch((err) => ({
-            error: err.message,
-          }))
-        )
+        scrapers
+          .filter(Boolean)
+          .map((scraper) =>
+            withTimeout(
+              scraper(),
+              MAX_WAIT_MS,
+              scraper.name || 'anonymous'
+            ).catch((err) => ({ error: err.message }))
+          )
       );
 
-      const validData = scrapedData.filter((d) => d?.code && !d.error);
-      const errors = scrapedData.filter((d) => d?.error);
+      let validData = scrapedData.filter((d) => d?.code && !d.error);
 
-      if (errors.length) {
-        console.warn(`⚠️  ${errors.length} index scrapers failed:`);
-        errors.forEach((err) => console.warn(`🔴 ${err.error}`));
-      }
-
-      console.log(`📊 Processing ${validData.length} index assets...`);
-
-      const results = await Promise.all(validData.map(processIndexUpdate));
-      const success = results.filter((r) => !r.error);
-      const failed = results.filter((r) => r.error);
-
-      success.forEach((result) => {
-        console.log(
-          `✅ ${result.code.padEnd(10)} ${result.action.padEnd(8)} in ${
-            result.duration
-          }ms` +
-            (result.action === 'updated'
-              ? ` 📈 (${result.oldPrice} → ${result.newPrice})`
-              : '')
-        );
+      validData = validData.filter((d) => {
+        if (d.code === 'GGSECI') {
+          if (day === 0 || day === 6) return false;
+          if (hour < 10 || hour >= 15) return false;
+        }
+        return true;
       });
 
-      if (failed.length) {
-        console.warn(`❌ ${failed.length} index updates failed:`);
-        failed.forEach((f) => console.warn(`🔴 ${f.code}: ${f.error}`));
-      }
+      console.log(`📊 Processing ${validData.length} index assets...`);
+      const results = await Promise.all(validData.map(processIndexUpdate));
 
-      console.log(
-        `\n🎯 Index update done in ${((Date.now() - startTime) / 1000).toFixed(
-          2
-        )}s | ✅ Success: ${success.length} ❌ Failed: ${
-          failed.length + errors.length
-        }`
-      );
+      results.forEach((result) => {
+        if (result.error) {
+          console.warn(`🔴 ${result.code}: ${result.error}`);
+        } else {
+          console.log(
+            `✅ ${result.code.padEnd(10)} ${result.action.padEnd(8)} in ${
+              result.duration
+            }ms` +
+              (result.action === 'updated'
+                ? ` 📈 (${result.oldPrice} → ${result.newPrice})`
+                : '')
+          );
+        }
+      });
     } catch (error) {
       console.error('🔥 Index update failed:', error.message);
     } finally {
       console.log(`✅ --- INDEX CRON COMPLETED (${runId}) ---`);
     }
   },
-  {
-    scheduled: true,
-    timezone: 'UTC',
-  }
+  { scheduled: true, timezone: 'UTC' }
 );
 
 process.on('SIGINT', async () => {
