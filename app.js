@@ -4,6 +4,8 @@ const express = require('express');
 require('dotenv').config();
 const morgan = require('morgan');
 const cors = require('cors');
+const path = require('path');
+const favicon = require('serve-favicon');
 
 const forexJob = require('./jobs/forex.job');
 const commoditiesJob = require('./jobs/commodities.job');
@@ -21,10 +23,13 @@ const goldbodRoutes = require('./routes/goldbod.routes');
 
 const app = express();
 
+app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:3002',
+  'https://www.editor.theghanaianweb.com',
   'https://www.theghanaianweb.com',
 ];
 
@@ -59,9 +64,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message });
 });
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 9000;
 
-app.listen(PORT, () => {
-  console.clear();
-  console.log('port is listening on ' + PORT);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
 });
