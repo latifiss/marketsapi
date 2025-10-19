@@ -109,7 +109,6 @@ const processIndexUpdate = async (data) => {
   }
 };
 
-// Run every hour
 const indexUpdateJob = cron.schedule(
   '0 * * * *',
   async () => {

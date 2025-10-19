@@ -25,22 +25,18 @@ router.get(
   companyController.getCompaniesFromIndustryInCountry
 );
 
-// Get all companies grouped by industry
 router.get('/group-by-industry', companyController.getGroupCompaniesByIndustry);
 
-// Get companies from industry in specific exchange
 router.get(
   '/industry/:industry/exchange/:exchangeName',
   companyController.getCompaniesFromIndustryInExchange
 );
 
-// Get all companies grouped by industry in specific exchange
 router.get(
   '/group-by-industry/exchange/:exchangeName',
   companyController.getGroupCompaniesByIndustryInExchange
 );
 
-// Get industry performance for a specific exchange
 router.get(
   '/industry-performance/exchange/:exchangeName',
   companyController.getIndustryPerformanceInExchange
