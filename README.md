@@ -1,17 +1,14 @@
-# MarketsAPI
-
 <p align="center">
   <img src="./public/android-chrome-192x192.png" alt="logo" width="150">
 </p>
 
 <h1 align="center">Markets API</h1>
 
-A 🆓free lightweight, configurable API server for market-data (or whatever the purpose) built with Node.js.  
-Currently based on Express, MongoDB (or other DB), job scheduling and modular architecture.
+A 🆓free lightweight, configurable API for market-data built with Node.js.  
+Currently based on Express, MongoDB, job scheduling and modular architecture.
 
 ## 🚩 Table of Contents
 
-- [📦 Packages](#-packages)
 - [📙Getting Started](#getting-started) 
 - [🔧Prerequisites](#prerequisites)
 - [🍞Installation](#installation)  
@@ -25,49 +22,22 @@ Currently based on Express, MongoDB (or other DB), job scheduling and modular ar
   - [Get Goldbold Price](#get-goldbod-price)
   - [Get All Stock Indexes](#get-all-stock-indexes)
   - [Get Stock Index By Symbol](#get-stock-index-by-symbol)
-- [🎨 Examples](#-examples)
 - [💬 Contributing](#-contributing)
 - [🚀 Used By](#-used-by)
 - [📜 License](#-license)
-
-
-## Table of Contents
-
-- [Features](#features)  
-- [Getting Started](#getting-started)  
-- [Prerequisites](#prerequisites)  
-- [Installation](#installation)  
-- [Configuration](#configuration)  
-- [Usage](#usage)  
-- [Folder Structure](#folder-structure)  
-- [Environment Variables](#environment-variables)  
-- [Jobs & Cron Tasks](#jobs--cron-tasks)  
-- [Contributing](#contributing)  
-- [License](#license)
-
-## Features
-
-- Modular architecture (controllers, routes, models, jobs, scripts)  
-- RESTful API endpoints (via `routes/`)  
-- Database integration (`db/` folder)  
-- Scheduled background jobs (`jobs/`)  
-- Utility libraries in `lib/` for shared logic  
-- Public/static assets served from `public/`  
-- Easy script execution via `scripts/`  
-- Easily configurable via `.env` file  
 
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing.
 
-### Prerequisites
+## Prerequisites
 
 - Node.js (v14+ recommended)  
 - npm or Yarn  
 - A running database (e.g., MongoDB) or any other DB configured in `db/`  
 - Optional: Redis, message queue or scheduler if used by jobs  
 
-### Installation
+## Installation
 
 1. Clone the repo:  
    ```bash
@@ -94,7 +64,7 @@ These instructions will get you a copy of the project up and running on your loc
    npm start
 
 
-### Configuration
+## Configuration
 
 Most configuration is done via environment variables. See the **Environment Variables** section below.
 
@@ -121,20 +91,37 @@ Most configuration is done via environment variables. See the **Environment Vari
 
 
 # Environment Variables
-# Add a `.env` file in the root with values similar to:
+
+Add a `.env` file in the root with values similar to:
+
+```bash
+PORT=9000
+NODE_ENV=development
+
+DB_HOST=localhost
+DB_PORT=27017
+DB_NAME=marketsdb
+DB_USER=
+DB_PASS=
+
+REDIS_HOST=your_redis_host
+REDIS_PORT=your_redis_port
+REDIS_USERNAME=your_redis_user
+REDIS_PASSWORD=your_redis_pass
+```
 
 
-### Endpoints
+## Endpoints
 
 ## Crypto 🪙
 
 * **Get All Crypto**
     ```
-    [https://markets.21centurynews.com/api/crypto](https://markets.21centurynews.com/api/crypto)
+    https://markets.21centurynews.com/api/crypto
     ```
 * **Get Crypto By Symbol**
     ```
-    [https://markets.21centurynews.com/api/crypto/](https://markets.21centurynews.com/api/crypto){symbol}
+    https://markets.21centurynews.com/api/crypto/{symbol}
     ```
 
 ***
@@ -143,11 +130,11 @@ Most configuration is done via environment variables. See the **Environment Vari
 
 * **Get Commodity By Symbol**
     ```
-    [https://markets.21centurynews.com/api/commodity/](https://markets.21centurynews.com/api/commodity/){symbol}
+    https://markets.21centurynews.com/api/commodity/{symbol}
     ```
 * **Get Goldbold Price**
     ```
-    [https://markets.21centurynews.com/api/goldbod/](https://markets.21centurynews.com/api/goldbod/)
+    https://markets.21centurynews.com/api/goldbod
     ```
 
 ***
@@ -156,11 +143,11 @@ Most configuration is done via environment variables. See the **Environment Vari
 
 * **Get All Forex**
     ```
-    [https://markets.21centurynews.com/api/forex](https://markets.21centurynews.com/api/forex)
+    https://markets.21centurynews.com/api/forex
     ```
 * **Get Forex By Exchange Symbol**
     ```
-    [https://markets.21centurynews.com/api/forex/](https://markets.21centurynews.com/api/forex/){symbol}
+    https://markets.21centurynews.com/api/forex/{symbol}
     ```
 
 ***
@@ -169,14 +156,14 @@ Most configuration is done via environment variables. See the **Environment Vari
 
 * **Get All Stock Indexes**
     ```
-    [https://markets.21centurynews.com/api/index](https://markets.21centurynews.com/api/index)
+    https://markets.21centurynews.com/api/index
     ```
 * **Get Stock Index By Symbol**
     ```
-    [https://markets.21centurynews.com/api/index/](https://markets.21centurynews.com/api/index){symbol}
+    https://markets.21centurynews.com/api/index/{symbol}
     ```
 
-### Contributing
+## Contributing
 
 1. Fork the repository
 2. Create your branch (`git checkout -b feature/fooBar`)
@@ -186,10 +173,8 @@ Most configuration is done via environment variables. See the **Environment Vari
 
 Please follow best practices for code style, include tests if applicable, and document your additions.
 
-### Used By
+## Used By
 [TheGhanaianWeb](https://theghanaianweb.com/)
 
-### License
-#Specify your license here (e.g., MIT).
-.com/latifiss/marketsapi.git
-   cd marketsapi
+## License
+`MIT`
