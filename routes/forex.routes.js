@@ -6,16 +6,22 @@ const {
   getForex,
   updateForex,
   deleteForex,
+  getForexHistory,
+  addForexHistory,
+  updateForexPrice,
 } = require('../controllers/forex.controller');
+const { authenticateApiKey } = require('../middleware/auth');
+const { apiKeyRateLimit } = require('../middleware/rateLimit');
 
-router.post('/', createForex);
+router.post('/forex', authenticateApiKey, createForex);
+router.put('/forex/:code', authenticateApiKey, updateForex);
+router.delete('/forex/:code', authenticateApiKey, deleteForex);
+router.post('/forex/:code/price', authenticateApiKey, updateForexPrice);
 
-router.get('/', getAllForex);
+router.get('/forex', apiKeyRateLimit, getAllForex);
+router.get('/forex/:code', apiKeyRateLimit, getForex);
+router.get('/forex/:code/history', apiKeyRateLimit, getForexHistory);
 
-router.get('/:code', getForex);
-
-router.put('/:code', updateForex);
-
-router.delete('/:code', deleteForex);
+router.post('/forex/:code/history', authenticateApiKey, addForexHistory);
 
 module.exports = router;
